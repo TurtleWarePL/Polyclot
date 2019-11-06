@@ -1,0 +1,251 @@
+
+http://vita.had.co.nz/papers/layered-grammar.pdf
+
+* simple plot
+
+** raw data
+When createing a plot we start with data. Simple dataset:
+
+| A |  B |  C | D |
+|---+----+----+---|
+| 2 |  3 |  4 | a |
+| 1 |  2 |  1 | a |
+| 4 |  5 | 15 | b |
+| 9 | 10 | 80 | b |
+
+** dataset selected for aesthetics
+
+Scatterplot [A;C] with D mapped to a shape. First step is to create a
+new dataset that reflects the mapping of x->A, y->C and shape ->
+D. x,y,shape are examples of *aesthetics*, things that we can perceive
+on the grpahic.
+
+| x |  y | Shape |
+|---+----+-------|
+| 2 |  4 | a     |
+| 1 |  1 | a     |
+| 4 | 15 | b     |
+| 9 | 80 | b     |
+
+This data specification may produce different types of plots: scatter
+plot, line plot, bar plot. Bars, lines and points are all parts of
+*geometric* objects.
+
+** scales and coordinate system
+
+The next thing to do is converting numbers in data units to physical
+units (things which may be displayed on the screen). For instance we
+may use a linear scale and a cartesian coordinate system. We will work
+on sheets, so we assume that display is contignous.
+
+# now we would perform a statistical transformation but it is skipped
+# in this example.
+
+#+BEGIN_EXAMPLE lisp
+  (* (/ (- x min-x) (range x)) screen-width)
+#+END_EXAMPLE
+
+The responsibility of *scales* is mapping between dataset data and the
+plot "physical" data. In this example:
+
+- x-position :: [0;200]
+- y-position :: [0,300]
+- shape :: [a->circle, b->square]
+
+After mapping we have (positions are floored because I'm too lazy to
+compute them myself, table is taken from the article):
+
+|   x |   y | Shape  |
+|-----+-----+--------|
+|  25 |  11 | circle |
+|   0 |   0 | circle |
+|  75 |  53 | square |
+| 200 | 300 | square |
+
+** rendering
+
+Creating complete plot we combine graphical objects from three sources:
+- data with aesthetics *point geom* (actual plot)
+- scales and coordinate systems (axes and legends)
+- plot annotations (background, plot title)
+
+* more complicated example
+
+Faceting splits original dataset into a dataset for each subset. I.e
+for the previous dataset we could have two panels one for circles and
+one for squares if we /facet the previous plot by D/.
+
+Scaling in our example occurs in thee parts:
+- scale transformation before statistical transformation
+- each scale is trained on every faceted dataset (to agree on common
+  scale) so we may compare data across different facets
+- finally scales map the data values into aesthetic values
+
+| x |  y | Shape |
+|---+----+-------|
+| 2 |  4 | a     |
+| 1 |  1 | a     |
+|---+----+-------|
+| 4 | 15 | b     |
+| 9 | 80 | b     |
+
+->
+
+|   x |   y | Shape  |
+|-----+-----+--------|
+|  25 |  11 | circle |
+|   0 |   0 | circle |
+|-----+-----+--------|
+|  75 |  53 | square |
+| 200 | 300 | square |
+
+notice, that results are basically the same. but we may have different
+transformations along the way or we may be computing some stuff
+inbetween.
+
+* components of the layered grammar
+
+in examples above we'v eseen some of the components making up the plot
+
+- data and aesthetic mappings
+- geometric objects
+- scales
+- facet specification
+
+we have also touched on two other components
+
+- statistical transformations
+- the coordinate system
+
+Layer is made of four components:
+- data
+- mappings
+- statistical transformation
+- geometric object
+
+A plot may have more than one layer (i.e scatterplot overlayed with a
+smoothed line). Comopnents of a plot in layered grammar are:
+
+- default dataset and set of mappings from variables to aesthetics
+- one or more layers, with each layer having one geometric object, one
+  statistical transformation, one position adjustment, and optionally,
+  one dataset and set of aesthetic mappings
+- one scale for each aesthetic mapping used
+- a coordinate system
+- the facet specification
+
+Layer component determines the physical representation of the data,
+with the combination of *stat* and *geom* defining many familiar named
+graphics: the scatterplot, histogram etc.
+
+In practice many plots have at least three layers:
+- the data
+- context for the data
+- statistical summary of the data
+
+For instance visualising spatial point process we display points, a
+map giving spatial context and contours of a 2d density estimate.
+
+** Layers
+
+(deflayer (:aes (x x)
+                (y y)
+                (color z))
+          (:geom "line")
+          (:stat "smooth"))
+
+Layer s are responsible for creating the objects that we perceive on
+the plot. A layer is composed of four parts:
+- data and aesthetic mapping
+- a statistical transformation (stat)
+- a geometric object (geom)
+- a position adjustment
+
+
+*** Data and mapping
+
+Data turns an abstract graphic into a concrete graphic. Along with the
+data, we need a specification of which variables are mapped to which
+aesthetics. For example, we might map /weight/ to /x position/,
+/height/ to /y position/, /age/ to /size/ and /health/ to /time/. The
+details of the mapping are desribed by the scales.
+
+*** Statistical transformation
+
+*stat* transforms the data, typically by zummarizing them in some
+manner. Statistical transformation must be a location-scale invariant
+meaning, that f(x+a) = f(x) + a and f(b*x) = b*f(x). This ensures that
+the transformation is invariant under translation and scaling which
+are common operations on a graphic.
+
+A *stat* takes a dataset as input and returns a dataset as output, and
+so a stat can add new variables to the original dataset. It is
+possible to map aesthetics to these new variables. Example of a
+statistical transformation is binning a continuous variable for a
+histogram.
+
+ggplot2 predefined *stat*'s
+
+| name     | description                                                    |
+|----------+----------------------------------------------------------------|
+| bin      | divide cont range into bins and count number of points in each |
+| boxplot  | compute statistics necessary for boxplot (?)                   |
+| contour  | calculate contour lines                                        |
+| density  | compute 1d density estimate                                    |
+| identity | identity transformation, f(x) = x                              |
+| jitter   | jitter values by adding small random value                     |
+| qq       | calculate values for quantile-quantile plot                    |
+| quantile | quantile regression                                            |
+| smooth   | smoothed conditional mean of y given x                         |
+| summary  | aggregate values of y for given x                              |
+| unique   | remove duplicated observation                                  |
+
+Statistical method used by a stat should be conditional on the
+coordinate system. I.e a smoother in polar coordinates should use
+circular regression, and in three dimensions should return a 2d
+surface rather than a 1d curve. Many operations might not have been
+derived for non-cartesian coordinates (this part is unclear to me what
+ggplot2 does about that).
+
+*** Geometric Object
+
+Geometric objects are called *geom*'s and they control the type of
+plot that is created. For exmple, using a pointe geom will create a
+scatterplot and a line geom will create a line plot. Geoms may be
+clasified by their dimensionality:
+
+- 0d :: point, text
+- 1d :: path, line (ordered path)
+- 2d :: polygon, interval
+
+Geometric obects are an abstract component which may be rendered in
+different ways. Geoms may require certain parameters from the user
+creating them.
+
+There is a strong correlation between statistics and geoms. Each geom
+has a default statistic and every statistic a default geom. Overriding
+defaults will produce a valid plot, but may violate graphical
+conventions.
+
+Each geom can only display certain aesthetics. I.e a point geom has
+position, color, shape and size aesthetics. A bar geom has position,
+height, width and fill color. Different parametrizations may be
+useful. I.e for bar chart instead of location and dimension we could
+parametrize the bar with locations of its four corners, because
+dimensions (i.e) correspond to radius in polar coordinates. ggplot2
+uses location-basesd parametreization internally.
+
+*** Position adjustment
+
+Tweaking the position of the geometric elements on the plot to avoid
+overlap. For instance in bar plots we stack or dodge bars, in
+scatterplots with few unique x/y values random jitter is applied to
+reduce overlapping. Collision modifiers.
+
+** Scales
+
+A *scale* controls the mapping data -> aes attribute. That means we
+need one scale for each aesthetic property used in a layer. Scales are
+common across layers to ensure a consistent mapping from data to
+aesthetics.
+

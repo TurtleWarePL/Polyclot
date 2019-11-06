@@ -1,0 +1,61 @@
+
+#+title: Polyclot 0.0.1 documentation
+#+author: Daniel <jackdaniel> Kochmański
+#+email: daniel@turtleware.eu
+#+date: [2019-04-14 Sun]
+
+* Overview
+
+Polyclot is a tool to draw interactive charts in CLIM. Purpose of this
+document is to provide information how to draw and how to create new
+types of charts. Tool may be used by other CLIM applications as a
+library or as a standalone utility to render charts.
+
+Only parts of the API are marked as stable and won't change in the
+future. Everything else is experimental and may change without prior
+notice.
+
+* Standalone utility
+
+All charts may be rendered with a ~FORMAT-CHART~ function. For
+instance to render a simple line chart with two data series evaluate
+in a REPL the following snippet:
+
+#+BEGIN_SRC lisp
+  (format-chart '((1 2 3 4 5)
+                  (1 2 4 8 16))
+                :chart-type :line)
+  ;; Amazing physics going on...
+#+END_SRC
+
+The first argument is a list of series to be drawn. How each serie is
+interpreted depends on a chart type. In this particular case elements
+are consecutive y values (and x is assumed to start at 0 with step 1).
+
+~:chart-type~ argument allows to specify a desired chart. Function
+accepts other keyword arguments which depend on a chart type. Range
+for X and Y axis in this example are inferred automatically but in
+principle each serie may have its own scale, scale and step (for
+functions).
+
+Another typical use of the library is to plot a function. We need to
+specify the X range and step.
+
+* Embedding in a CLIM application
+** As a frame
+** As a pane
+** As an output record
+   
+* Extending Polyclot
+
+Polyclot is a tool to present data which comes in series. Each serie
+has one or more dimensions and each dimension has properties: a label,
+minimum and maximum value, major and minor ticks and a scaling
+function. Serie have a name and objects. Each object has a position.
+
+serie                                                 [abstract class]
+1d-serie (serie)
+2d-serie (serie)
+3d-serie (serie)
+
+* Reference manual
