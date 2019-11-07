@@ -7,7 +7,9 @@
   :license "BSD-2-Clause"
   :depends-on (#:mcclim #:alexandria #:stealth-mixin)
   :components ((:module "Documentation"
-                :components ((:static-file "documentation.org")))
+                :components ((:static-file "documentation.org")
+                             (:static-file "doc-dataframe.org")
+                             (:static-file "doc-dataframe.lisp")))
                (:module "Source"
                 :components ((:file "packages")
                              (:file "utilities")

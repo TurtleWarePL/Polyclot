@@ -1,0 +1,188 @@
+
+
+* Introduction
+
+Data frame concept is borrowed from the language R[fn:1]. Data frames
+are convenient when we work on n-dimensional data. Each data entity is
+represented by a row and each dimension by a column. In other words it
+is a table with named columns. For instance entries from the address
+book demo in McCLIM:
+
+| name               | address           | number         |
+|--------------------+-------------------+----------------|
+| "Chris Richardson" | "Franz, Inc."     | "510-548-3600" |
+| "Colin Meldrum"    | "Franz, Inc."     | "510-548-3600" |
+| "Scott McKay"      | "Symbolics, Inc." | "617-221-1000" |
+| "Bill York"        | "Lucid, Inc."     | "415-xxx-yyyy" |
+| "Paul Weineke"     | "Lucid, Inc."     | "415-xxx-yyyy" |
+
+Column names are strings and cell values may be of any type. Currently
+defined operations on data frames are: creation, copying, adding rows
+and columns, creating a data frame slice, selecting a single element
+and mapping over whole date frame, its rows and over row columns.
+
+* Creating data frames
+
+** New data frames
+
+To create a data frame call the function ~make-data-frame~. The first
+argument is a sequence containing column names and the rest are rows
+(each row must be a sequence of the same length as the first
+argument). Column names must be unique strings.
+
+#+BEGIN_SRC common-lisp
+  (defparameter *data-frame*
+    (make-data-frame '("name"             "address"         "number")
+                     ;;---------------------------------------------------
+                     '("Chris Richardson" "Franz, Inc."     "510-548-3600")
+                     '("Colin Meldrum"    "Franz, Inc."     "510-548-3600")
+                     '("Scott McKay"      "Symbolics, Inc." "617-221-1000")
+                     '("Bill York"        "Lucid, Inc."     "415-xxx-yyyy")
+                     '("Paul Weineke"     "Lucid, Inc."     "415-xxx-yyyy")))
+#+END_SRC
+
+** Adding rows and columns
+
+It is possible to add new rows and columns to an existing data
+frame. To do that we use destructive operators ~add-rows!~ and
+~add-cols!~. The value type is not constrained by the library. Let's
+add few extra rows.
+
+#+BEGIN_SRC common-lisp
+  (add-rows! *data-frame*
+             '("Daniel Kochmański" "TurtleWare" "516-xxx-yyy")
+             '("Anna Durke"        "TurtleWare" "516-xxx-yyy")
+             '("Emmy Grahams"      "TurtleWare" "516-xxx-yyy")
+             '("Caroline Tarsky"   "Just, Inc." :invalid)
+             '("Andrew Smith"      "Just, Inc." :hidden)
+             '("David Smith"       "Just, Inc." "666-xxx-yyy")
+             '("Emily Bublinski"   "Doit"       "333-xxx-yyy"))
+#+END_SRC
+
+Adding columns is a little more tricky, because to add a column we
+specify a function of the entire row. The function result is used as
+the value for a new column in given row.
+
+#+BEGIN_SRC common-lisp
+  (add-cols! *data-frame*
+             "Name length"
+             (lambda (row-index row)
+               (declare (ignore row-index))
+               (length (ref *data-frame* row "name")))
+             "Country"
+             (lambda (row-index row)
+               (declare (ignore row-index))
+               (let ((address (ref *data-frame* row "address")))
+                 (switch (address :test (lambda (elt pat)
+                                          (member elt pat :test #'string=)))
+                   ('("Franz, Inc." "Symbolics, Inc." "Lucid, Inc.") "USA")
+                   ('("TurtleWare" "Just, Inc.")                     "Poland")
+                   (otherwise                                        "Unknown")))))
+#+END_SRC
+
+Now if we try to evaluate the ~add-cols!~ snippet again, an error will
+be signaled that the column name is not unique. If you try to evaluate
+~add-rows!~ snippet again an error will be signaled that the row
+length doesn't match the data frame.
+
+** Copying data frames
+
+If you do not want to modify the original data frame but you still
+want to play with new columns, work on the data frame copy.
+
+#+BEGIN_SRC common-lisp
+  (defparameter *data-frame-copy* (copy-data-frame *data-frame*))
+  (add-cols! *data-frame-copy* "The answer" (constantly 42))
+
+  (dims *data-frame*)      ; -> 12, 5
+  (dims *data-frame-copy*) ; -> 12, 6
+#+END_SRC
+
+The function ~dims~ returns a data frame dimensions: a number of rows
+and a number of columns.
+
+** Selecting data frame slices
+
+Another way to create a data frame is to select interesting rows and
+columns. To do that, call the function ~sel~. The resulting data frame
+will behave like a freshly allocated data frame. Let's select the
+first 7 rows and columns "name and "Name length" from the data frame.
+
+#+BEGIN_SRC common-lisp
+(defparameter *data-frame-slice*
+  (sel *data-frame*
+       '(t . 6)
+       #("name" "Name length")))
+#+END_SRC
+
+Possible slice specifiers are documented in the reference manual.
+
+** Joining data frames
+
+This operation is not yet specified (there are many possible ways to
+join data frames).
+
+* Working with data frames
+
+Data frames in our implementation are row based. A dataset is
+represented as a sequence of rows which contains a sequence of
+values. Column names are also represented as a sequence of
+strings. These sequences are part of the data frame internal state and
+should not be modified by the user directly (use ~add-rows!~ and
+~add-cols!~ if you want to add data, and use ~sel~ if you want to
+remove data). Modifying and creating new data frames may be expensive
+so it is recommended to map over data frames instead when possible.
+
+To check dimensions of a data frame call the function ~dims~. It
+returns two values: a number of rows and a number of columns. Note
+that these numbers may increase if you add more data, but they will
+never decrease.
+
+To address a single element in the data frame, you need to provide its
+indexes. Columns may be index by either a string or a number, rows are
+indexed by numbers (it is possible to pass the row instead of its
+index). While it is possible to access a single row, it is not
+possible to access a full column because each column is spread across
+all rows. Programmer will have to collect all columns themself when
+they need it.
+
+#+BEGIN_SRC common-lisp
+(dims *data-frame*)            ; -> 12, 5
+(ref *data-frame* 5 0)         ; -> "Daniel Kochmański"
+(ref *data-frame* 7 "Country") ; -> "Poland"
+#+END_SRC
+
+Mapping is prefered over selection because it doesn't cons new
+sequences. Slice specifiers are the same for both operations. It is
+possible to map over whole data frame, over rows and over a single row
+column-by-column. Example for printing all names in a data frame:
+
+#+BEGIN_SRC common-lisp
+(map-data-frame *data-frame* t #("name")
+  (lambda (rind row cind cname value)
+    (declare (ignore rind row cind cname))
+    (print value)))
+#+END_SRC
+
+Mapping over rows is similar, except we do not specify the column (and
+the continuation has an appropriate lambda list). Example for mapping
+over all rows except the first two:
+
+#+BEGIN_SRC common-lisp
+(map-data-frame-rows *data-frame* '(2 . t)
+  (lambda (rind row)
+    (format t "Person id ~s, name ~s~%" rind (ref *data-frame* row "name"))))
+#+END_SRC
+
+Mapping over columns is always done in a single row. We will map over
+all fourth row columns except the first column.
+
+#+BEGIN_SRC common-lisp
+(map-data-frame-cols *data-frame* 3 '(1 . t)
+  (lambda (cind cname value)
+    (format t "~s (~a): ~a~%" cind cname value)))
+#+END_SRC
+
+* Footnotes
+
+[fn:1] https://www.rdocumentation.org/packages/base/versions/3.6.1/topics/data.frame
