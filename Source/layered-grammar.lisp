@@ -63,8 +63,9 @@
           for val = (getf vals aes)
           do (setf (elt row ind) val))))
 
-(defgeneric collision-modifier (<stat> vals)
-  (:method ((stat <identity>) vals)
+(defgeneric collision-modifier (<mods> last vals)
+  (:method ((mods <identity>) last vals)
+    (declare (ignore last))
     vals))
 
 (defgeneric statistical-transformation (<stat> <data-frame>)
@@ -72,11 +73,14 @@
     (declare (ignore stat))
     frame)
   (:method ((stat <mods>) (frame <data-frame>))
-    (let ((df (copy-data-frame frame)))
+    (let ((df (copy-data-frame frame))
+          (last-vals nil))
       (flet ((modify-row (index row)
+               (declare (ignore index))
                (let* ((aest (aest stat))
                       (vals (map-aesthetics aest df row))
-                      (modified-vals (collision-modifier stat vals)))
+                      (modified-vals (collision-modifier stat last-vals vals)))
+                 (setf last-vals vals)
                  (unmap-aesthetics! (aest stat) df row modified-vals))))
         (map-data-frame-rows frame t #'modify-row)))))
 
