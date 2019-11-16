@@ -9,14 +9,14 @@
    (indexes :initform nil)))
 
 (define-class <stat> ()
-  ((aest :initarg :aest :reader aest)))
+  ((aest :initarg :aest)))
 
 ;;; <mods> when used in a <stat> context is applied to all rows.
 (define-class <mods>     (<stat>) ())
 (define-class <identity> (<mods>) ())
 
 (define-class <geom> ()
-  ((aest :initarg :aest :reader aest)))
+  ((aest :initarg :aest)))
 
 ;;; FIXME stubs for now
 (define-class <scale> () ())
@@ -24,17 +24,17 @@
 (define-class <facet> () ())
 
 (define-class <layer> ()
-  ((data :initarg :data :reader data)
-   (aest :initarg :aest :reader aest)
-   (stat :initarg :stat :reader stat)
-   (geom :initarg :geom :reader geom)
-   (mods :initarg :mods :reader mods)))
+  ((data :initarg :data)
+   (aest :initarg :aest)
+   (stat :initarg :stat)
+   (geom :initarg :geom)
+   (mods :initarg :mods)))
 
 (define-class <chart> (<layer>)
-  ((coord :initarg :coord :reader coord)
-   (scale :initarg :scale :reader scale)
-   (facet :initarg :facet :reader facet)
-   (layer :initarg :layer :reader layer)))
+  ((coord :initarg :coord)
+   (scale :initarg :scale)
+   (facet :initarg :facet)
+   (layer :initarg :layer)))
 
 (defun map-aesthetics (aest df row)
   (with-slots (aest vars last-df indexes) aest
