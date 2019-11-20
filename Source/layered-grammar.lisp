@@ -68,13 +68,13 @@
 (defgeneric geometric-object-add    (<geom> &rest args))
 (defgeneric geometric-object-finish (<geom>))
 
-(defun aest (&rest plist)
-  (if (alexandria:sequence-of-length-p plist 1)
-      (slot-value (pop plist) 'aest)
-      (loop for (i j) on plist by #'cddr
-            collect i into aes
-            collect j into var
-            finally (return (<aest> :aest aes :vars var)))))
+(defmacro aest (&rest args)
+  (if (sequence-of-length-p args 1)
+      `(slot-value ,(first args) 'aest)
+      `(loop for (i j) on ',args by #'cddr
+             collect i into aes
+             collect j into var
+             finally (return (<aest> :aest aes :vars var)))))
 
 (defun stat (class &rest args)
   (case class
