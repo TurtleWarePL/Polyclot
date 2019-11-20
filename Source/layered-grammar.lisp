@@ -76,18 +76,19 @@
              collect j into var
              finally (return (<aest> :aest aes :vars var)))))
 
-(defun stat (class &rest args)
+(defmacro stat (class &rest args)
   (case class
-    (<identity> (apply <stat-identity> args))
-    (apply class args)))
+    (<identity> `(<stat-identity> ,@args))
+    (otherwise  `(,class ,@args))))
 
-(defun mods (class &rest args)
+(defmacro mods (class &rest args)
   (case class
-    (<identity> (apply <mods-identity> args))
-    (apply class args)))
+    (<identity> `(<mods-identity> ,@args))
+    (otherwise  `(,class ,@args))))
 
-(defun geom (class &rest args)
-  (apply class args))
+(defmacro geom (class &rest args)
+  (case class
+    (otherwise `(,class ,@args))))
 
 ;;; FIXME macro stub
 (defmacro define-chart (name options &rest layers)
