@@ -9,7 +9,7 @@
     (prog1 df
       (flet ((add-it (index row)
                (declare (ignore index))
-               (let* ((vals (funcall aest df row))
+               (let* ((vals (map-aesthetics aest df row))
                       (xval (getf vals :x)))
                  (incf (gethash xval fr 0))))
              (put-it (index row)
