@@ -50,20 +50,6 @@
           collect aes
           collect (ref df row ind))))
 
-;;; CAUTION modifies a dataframe row
-(defun unmap-aesthetics! (aest df row vals)
-  (with-slots (aest vars last-df indexes) aest
-    (unless (eql last-df df)
-      (setf last-df df
-            indexes (map 'list
-                         (lambda (col)
-                           (position col (cols df) :test #'string=))
-                         vars)))
-    (loop for aes in aest
-          for ind in indexes
-          for val = (getf vals aes)
-          do (setf (elt row ind) val))))
-
 (defgeneric collision-modifier (<mods> last vals)
   (:method ((mods <mods-identity>) last vals)
     (declare (ignore last))
