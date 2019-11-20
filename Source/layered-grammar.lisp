@@ -9,7 +9,8 @@
    (indexes :initform nil)))
 
 (define-class <layered-grammar-component> ()
-  ((aest :initarg :aest)))
+  ((aest :initarg :aest)
+   (data :initarg :data)))
 
 (define-class <stat> (<layered-grammar-component>) ())
 (define-class <mods> (<layered-grammar-component>) ())
@@ -24,18 +25,21 @@
 (define-class <coord> () ())
 (define-class <facet> () ())
 
-(define-class <layer> ()
-  ((data :initarg :data)
-   (aest :initarg :aest)
-   (stat :initarg :stat)
+(define-class <layer> (<layered-grammar-component>)
+  ((stat :initarg :stat)
    (geom :initarg :geom)
    (mods :initarg :mods)))
 
 (define-class <chart> (<layer>)
-  ((coord :initarg :coord)
-   (scale :initarg :scale)
-   (facet :initarg :facet)
-   (layer :initarg :layer)))
+  ((coord  :initarg :coord)
+   (scale  :initarg :scale)
+   (facet  :initarg :facet)
+   (layers :initarg :layers)))
+
+(defmethod initialize-instance :after ((object <chart>) &key layers)
+  (unless layers
+    (setf (slot-value object 'layers)
+          (list object))))
 
 (defun map-aesthetics (aest df row)
   (with-slots (aest vars last-df indexes) aest
