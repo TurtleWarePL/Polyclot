@@ -89,10 +89,12 @@
 (defgeneric geometric-object-finish (<geom>))
 
 (defun aest (&rest plist)
-  (loop for (i j) on plist by #'cddr
-        collect i into aes
-        collect j into var
-        finally (return (<aest> :aest aes :vars var))))
+  (if (alexandria:sequence-of-length-p plist 1)
+      (slot-value (pop plist) 'aest)
+      (loop for (i j) on plist by #'cddr
+            collect i into aes
+            collect j into var
+            finally (return (<aest> :aest aes :vars var)))))
 
 (defun stat (class &rest args)
   (apply class args))
