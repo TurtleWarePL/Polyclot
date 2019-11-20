@@ -8,15 +8,16 @@
    (last-df :initform nil)
    (indexes :initform nil)))
 
-(define-class <stat> ()
+(define-class <layered-grammar-component> ()
   ((aest :initarg :aest)))
 
-;;; <mods> when used in a <stat> context is applied to all rows.
-(define-class <mods>     (<stat>) ())
-(define-class <identity> (<mods>) ())
+(define-class <stat> (<layered-grammar-component>) ())
+(define-class <mods> (<layered-grammar-component>) ())
+(define-class <geom> (<layered-grammar-component>) ())
 
-(define-class <geom> ()
-  ((aest :initarg :aest)))
+(define-class <stat-identity> (<stat>) ())
+(define-class <mods-identity> (<mods>) ())
+(define-constant <identity> '<identity>)
 
 ;;; FIXME stubs for now
 (define-class <scale> () ())
@@ -64,25 +65,14 @@
           do (setf (elt row ind) val))))
 
 (defgeneric collision-modifier (<mods> last vals)
-  (:method ((mods <identity>) last vals)
+  (:method ((mods <mods-identity>) last vals)
     (declare (ignore last))
     vals))
 
 (defgeneric statistical-transformation (<stat> <data-frame>)
-  (:method ((stat <identity>) (frame <data-frame>))
+  (:method ((stat <stat-identity>) (frame <data-frame>))
     (declare (ignore stat))
-    frame)
-  (:method ((stat <mods>) (frame <data-frame>))
-    (let ((df (copy-data-frame frame))
-          (last-vals nil))
-      (flet ((modify-row (index row)
-               (declare (ignore index))
-               (let* ((aest (aest stat))
-                      (vals (map-aesthetics aest df row))
-                      (modified-vals (collision-modifier stat last-vals vals)))
-                 (setf last-vals vals)
-                 (unmap-aesthetics! (aest stat) df row modified-vals))))
-        (map-data-frame-rows frame t #'modify-row)))))
+    frame))
 
 (defgeneric geometric-object-start  (<geom> <coord> <mods>))
 (defgeneric geometric-object-add    (<geom> &rest args))
@@ -97,12 +87,16 @@
             finally (return (<aest> :aest aes :vars var)))))
 
 (defun stat (class &rest args)
-  (apply class args))
-
-(defun geom (class &rest args)
-  (apply class args))
+  (case class
+    (<identity> (apply <stat-identity> args))
+    (apply class args)))
 
 (defun mods (class &rest args)
+  (case class
+    (<identity> (apply <mods-identity> args))
+    (apply class args)))
+
+(defun geom (class &rest args)
   (apply class args))
 
 ;;; FIXME macro stub
