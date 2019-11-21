@@ -6,7 +6,9 @@
    (vars :initarg :vars)
    ;; slots used for caching
    (last-df :initform nil)
-   (indexes :initform nil)))
+   (indexes :initform nil)
+   ;; handling of (enum variable)
+   (enums :initform nil)))
 
 (define-class <layered-grammar-component> ()
   ((aest :initarg :aest)
@@ -42,17 +44,34 @@
           (list object))))
 
 (defun map-aesthetics (aest df row)
-  (with-slots (aest vars last-df indexes) aest
+  (with-slots (aest vars last-df indexes enums) aest
     (unless (eql last-df df)
       (setf last-df df
-            indexes (map 'list
-                         (lambda (col)
-                           (position col (cols df) :test #'string=))
-                         vars)))
+            indexes nil
+            enums nil)
+      (do* ((vars vars (cdr vars))
+            (var #1=(car vars) #1#))
+           ((null vars)
+            (setf indexes (nreverse indexes)
+                  enums   (nreverse enums)))
+        (etypecase var
+          (string
+           (push nil enums)
+           (push (position var (cols df) :test #'string=) indexes))
+          ((cons (eql :enum)
+                 (cons string null))
+           (push (make-hash-table :test #'equal) enums)
+           (push (position (second var) (cols df) :test #'string=) indexes)))))
     (loop for aes in aest
+          for enu in enums
           for ind in indexes
           collect aes
-          collect (ref df row ind))))
+          if (not enu)
+            collect (ref df row ind)
+          else
+            collect (ensure-gethash (ref df row ind)
+                                    enu
+                                    (hash-table-count enu)))))
 
 (defgeneric collision-modifier (<mods> last vals)
   (:method ((mods <mods-identity>) last vals)
