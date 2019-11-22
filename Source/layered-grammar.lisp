@@ -85,6 +85,17 @@
                                     enu
                                     (hash-table-count enu)))))
 
+(defun make-empty-data-frame (aest df &key (new-cols nil))
+  (let* ((plst (map-aesthetics aest df (cols df)))
+         (cols (loop for (key val) on plst by #'cddr
+                     collect val)))
+    (when new-cols
+      (if (atom new-cols)
+          (push new-cols cols)
+          (loop for col in new-cols
+                do (push col cols))))
+    (make-data-frame cols)))
+
 (defgeneric collision-modifier (<mods> last vals)
   (:method ((mods <mods-identity>) last vals)
     (declare (ignore last))
