@@ -277,37 +277,7 @@
                  (setf (aref rows index) (copy-array row))
                  (incf index))
            src)
-      (<raw-data-frame> :cols cols :rows rows)))
-  ;; vector of vectors (not 2d array), first row is column names
-  (:method ((dv vector))
-    (let* ((row-num (1- (array-dimension dv 0)))
-           (new-cols (copy-array (aref dv 0)
-                                 :element-type t
-                                 :adjustable t
-                                 :fill-pointer t))
-           (new-rows (make-array row-num
-                                 :element-type t
-                                 :adjustable t
-                                 :fill-pointer t))
-           (col-width (array-dimension new-cols 0)))
-      (loop for col across new-cols
-            do (assert (stringp col) nil '<invalid-col-index>)
-            unless (find col unique-cols :test #'string=)
-              collect col into unique-cols
-            finally (assert (= col-width (length unique-cols))
-                            nil
-                            '<col-name-not-unique>))
-      (loop for index from 0 below row-num and i from 1
-            for row = (aref dv i)
-            do (assert (sequence-of-length-p row col-width)
-                       nil
-                       '<row-length-mismatch>)
-               (setf (aref new-rows index)
-                     (copy-array row
-                                 :element-type t
-                                 :adjustable t
-                                 :fill-pointer t)))
-      (<raw-data-frame> :cols new-cols :rows new-rows))))
+      (<raw-data-frame> :cols cols :rows rows))))
 
 (defgeneric join-data-frame (df1 df2 &rest args)
   (:method ((df1 <data-frame>) (df2 <data-frame>) &rest args)
