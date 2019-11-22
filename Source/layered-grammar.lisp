@@ -96,6 +96,25 @@
                 do (push col cols))))
     (make-data-frame cols)))
 
+(defun get-data-range (aest df)
+  (let* ((min-plst) (max-plst))
+    (flet ((initialize-min-max (row-index row)
+             (declare (ignore row-index))
+             (let ((plst (map-aesthetics aest df row)))
+               (setf min-plst (copy-list plst)
+                     max-plst (copy-list plst))))
+           (set-min-max (row-index row)
+             (declare (ignore row-index))
+             (let ((plst (map-aesthetics aest df row)))
+               (loop for (key value) on plst by #'cddr
+                     for xmin = (getf min-plst key) and xmax = (getf max-plst key)
+                     do (cond
+                          ((< value xmin) (setf (getf min-plst key) value))
+                          ((> value xmax) (setf (getf max-plst key) value)))))))
+      (map-data-frame-rows df 0 #'initialize-min-max)
+      (map-data-frame-rows df '(1 . t) #'set-min-max)
+      (list min-plst max-plst))))
+
 (defgeneric collision-modifier (<mods> last vals)
   (:method ((mods <mods-identity>) last vals)
     (declare (ignore last))
