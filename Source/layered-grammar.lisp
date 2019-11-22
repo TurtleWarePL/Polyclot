@@ -43,6 +43,18 @@
     (setf (slot-value object 'layers)
           (list object))))
 
+(defun copy-aest (aest &rest args)
+  (let ((new-aest) (new-vars))
+    (loop for (key val) on args by #'cddr
+          do (push key new-aest)
+             (push val new-vars))
+    (with-slots (aest vars) aest
+      (loop for key in aest and val in vars
+            unless (member key new-aest)
+              do (push key new-aest)
+                 (push val new-vars)))
+    (<aest> :aest new-aest :vars new-vars)))
+
 (defun map-aesthetics (aest df row)
   (with-slots (aest vars last-df indexes enums) aest
     (unless (eql last-df df)
