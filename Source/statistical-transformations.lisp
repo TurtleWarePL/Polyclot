@@ -49,18 +49,24 @@
     bin-centers))
 
 (defun nonuniform-bins (bin-edges)
-  "Return non-uniform bin centers given the `bin-edges`."
+  "Return non-uniform bin centers given the `bin-edges`.
+
+bin-widths are returned as the second value.
+"
   (let* ((count (1- (length bin-edges)))
-         (bin-centers (make-array count)))
+         (bin-centers (make-array count))
+         (bin-widths (make-array count)))
     (loop for index from 0 below count and i from 1
           for xf0 = (elt bin-edges 0) then xf1
           for xf1 = (elt bin-edges i)
           for xc = (/ (+ xf0 xf1) 2)
           do (assert (> xf1 xf0) nil '<bins-not-monotonic>)
-             (setf (aref bin-centers index) xc))
-    bin-centers))
+             (setf (aref bin-centers index) xc
+                   (aref bin-widths index) (- xf1 xf0)))
+    (values bin-centers bin-widths)))
 
 (defmethod statistical-transformation ((stat <bin>) (frame <data-frame>))
+  (declare (notinline median))
   (let* ((col-name "..count..")
          (aest (aest stat))
          (df (make-empty-data-frame aest frame :new-cols col-name))
@@ -70,19 +76,27 @@
          (xmax (getf (second ranges) :x))
          (xrange (- xmax xmin))
          (jit-factor 1.0d-8)
-         (n-bins) (w-bins))
+         (n-bins) (w-bins) (bin-centers))
     (with-slots (aest count width left-edge bin-edges) stat
-      (if width
-          (setf w-bins width
-                n-bins (max 1 (round (/ xrange width))))
-          (setf n-bins count
-                w-bins (/ xrange count)))
+      (cond
+        (bin-edges
+         (multiple-value-bind (centers widths) (nonuniform-bins bin-edges)
+           (setf bin-centers centers
+                 n-bins (1- (length bin-edges))
+                 w-bins (median widths))))
+        (width
+         (setf w-bins width
+               n-bins (max 1 (round (/ xrange width)))))
+        (t (setf n-bins count
+                 w-bins (/ xrange count))))
       ;; bin it
       (let ((bin-centers (if bin-edges 
-                             (nonuniform-bins bin-edges)
+                             
                              (uniform-bins n-bins xmin xmax)))
             (bin-counts (make-array n-bins :initial-element 0))
-            (jit (if left-edge jit-factor (- jit-factor))))
+            (jit (if left-edge 
+                     (* jit-factor w-bins) 
+                     (* (- jit-factor) w-bins))))
         (if bin-edges
             ;; non-uniform-bins requires search
             (flet ((count-into-bins (row-index row)
