@@ -1,19 +1,21 @@
 (in-package #:eu.turtleware.polyclot.impl)
 
-(define-class <count> (<stat>) ())
+(define-class <stat-count> (<stat>) ())
+(define-constant <count> '<count>)
 
-(define-class <bin> (<stat>)
+(define-class <stat-bin> (<stat>)
   ;; one of :width, :count, or :bin-edges required; they are mutually
   ;; exclusive.
   ((width :initarg :width :initform nil)
    (count :initarg :count :initform 29)
    (left-edge :initarg :left-edge :initform t)
    (bin-edges :initarg :bin-edges :initform nil)))
+(define-constant <bin> '<bin>)
 
 (define-condition <stat-error> (error) ())
 (define-condition <bins-not-monotonic> (<stat-error>) ())
 
-(defmethod statistical-transformation ((stat <count>) (frame <data-frame>))
+(defmethod statistical-transformation ((stat <stat-count>) (frame <data-frame>))
   (let ((df (copy-data-frame frame))
         (aest (aest stat))
         (fr (make-hash-table :test #'equal)))
@@ -61,7 +63,7 @@ bin-widths are returned as the second value.
                    (aref bin-widths index) (- xf1 xf0)))
     (values bin-centers bin-widths)))
 
-(defmethod statistical-transformation ((stat <bin>) (frame <data-frame>))
+(defmethod statistical-transformation ((stat <stat-bin>) (frame <data-frame>))
   (declare (notinline median))
   (let* ((col-name "..count..")
          (aest (aest stat))
