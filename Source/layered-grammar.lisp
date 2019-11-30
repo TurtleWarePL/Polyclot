@@ -140,6 +140,8 @@
 (defmacro stat (class &rest args)
   (case class
     (<identity> `(<stat-identity> ,@args))
+    (<count> `(<stat-count> ,@args))
+    (<bin> `(<stat-bin> ,@args))
     (otherwise  `(,class ,@args))))
 
 (defmacro mods (class &rest args)
