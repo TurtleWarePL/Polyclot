@@ -15,7 +15,8 @@
                 :components ((:file "packages")
                              (:file "utilities")
                              (:file "dataframe")
-                             (:file "layered-grammar")))))
+                             (:file "layered-grammar")
+                             (:file "statistical-transformations")))))
 
 (defsystem "eu.turtleware.polyclot/tests"
   :depends-on ("eu.turtleware.polyclot" "fiveam" "alexandria" "mcclim")

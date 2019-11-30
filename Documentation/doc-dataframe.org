@@ -1,7 +1,5 @@
 
 
-* Introduction
-
 Data frame concept is borrowed from the language R[fn:1]. Data frames
 are convenient when we work on n-dimensional data. Each data entity is
 represented by a row and each dimension by a column. In other words it

@@ -10,55 +10,50 @@ document is to provide information on how to plot data and how to
 create new types of charts. Tool may be used by other CLIM
 applications as a library or as a standalone utility to render charts.
 
-* Developer guide
+
+* Development
+
 ** Coding conventions
-- class names are enclosed in brackets, i.e ~<data-frame>~
-- type names are enclosed in percentage characters, i.e ~%index%~
-- anaphoric macro variable names should start with caret, i.e ~^it~
-- implementation is in a single package ~eu.turtleware.polyclot.impl~
+ - class names are enclosed in brackets, i.e ~<data-frame>~
+ - type names are enclosed in percentage characters, i.e ~%index%~
+ - anaphoric macro variable names should start with caret, i.e ~^it~
+ - implementation is in a single package ~eu.turtleware.polyclot.impl~
+
 ** Utilities
-Our implementaiton package USEs alexandria. Other utilities when added
-should be documented here.
+ Our implementaiton package USEs alexandria. Other utilities when added
+ should be documented here.
 
 *** (define-class <name> superclass slots &rest options)              :macro:
 
-Defines a class <name>, its constructor function <name> (trampoline to
-a make-instance) and a variable <name> which contains the class
-object. Accepts additional option ~:stealth-mixin~ which makes this
-class a superclass of the victim.
+ Defines a class <name>, its constructor function <name> (trampoline to
+ a make-instance) and a variable <name> which contains the class
+ object. Accepts additional option ~:stealth-mixin~ which makes this
+ class a superclass of the victim.
 
-#+BEGIN_SRC common-lisp
-(define-class <record-positions> (<data-frame>)
-  ((ink :initform clim:+red+))
-  (:stealth-mixin clim:output-record-history)
-  (:documentation "OUTPUT-RECORD position scatterplot."))
-#+END_SRC
+ #+BEGIN_SRC common-lisp
+ (define-class <record-positions> (<data-frame>)
+   ((ink :initform clim:+red+))
+   (:stealth-mixin clim:output-record-history)
+   (:documentation "OUTPUT-RECORD position scatterplot."))
+ #+END_SRC
 
-Possibility to mix into the existing class allows interpreting objects
-defined in unrelated libraries as i.e a dataframe.
+ Possibility to mix into the existing class allows interpreting objects
+ defined in unrelated libraries as i.e a dataframe.
 
-** Data frames
 
-Data frame represents a set of data. Data is immutable, but it is
-possible to filter rows and columns with a function ~sel~ and to add
-rows and columns with functions ~add-rows!~ and ~add-cols!~.
+* Data frames
+** Overview
+#+include: doc-dataframe.org
+** Reference
+#+include: ref-dataframe.org
 
-Column names immutable strings which must be unique across the data
-frame. Data should be accessed with mapping functions
-~map-data-frame~, ~map-data-frame-rows~ and ~map-data-frame-cols~ and
-with a function ~ref~ which allows selecting a single element.
+* Layered grammar for graphics
+** Overview
+** Reference
 
-** Layered grammar
-
-*** <aesthetic> - mapping of a dataframe                              :layer:
-*** <stat> - statistical transformation                               :layer:
-*** <geom> - geometric object (design)                                :layer:
-*** <mods> - collision modifiers (positional adjustment)              :layer:
-*** <scale> - mapping from data to aesthetic attributes
-*** <coord> - mapping of the object's position to the plot's area
-
-# * Standalone utility
-
+* Standalone utility
+** Interactive plotting
+** Plotting to other formats
 # # This is part of the old documentation. It will need to change to
 # # match the new abstraction, but the gist of the functionality is to
 # # allow plotting directly form a non-CLIM REPL.
@@ -87,178 +82,9 @@ with a function ~ref~ which allows selecting a single element.
 # # Another typical use of the library is to plot a function. We need to
 # # specify the X range and step.
 
-
-
-# * Embedding in a CLIM application
-# ** As a frame
-# ** As a pane
-# ** As an output record
+* Embedding in a CLIM application
+** As a frame
+** As a pane
+** As an output record
    
-# * Extending Polyclot
-
-* Reference manual
-** Data Frames
-*** Types
-**** <data-frame>                                                     :class:
-A protocol class. All class implementing this protocol must have it as
-its superclass.
-**** <raw-data-frame>                                                 :class:
-Data frame created by make-data-frame.
-**** %col-index%                                                       :type:
-Either an integer from 0 to n-1 or a string. If there is no such
-column an error <invalid-index> is signalled.
-**** %row-index%                                                       :type:
-Either an Integer from 0 to n-1 or a sequence.
-**** %col-slice%                                                       :type:
-
-- (eql t) :: select all rows/cols
-- (cons %col-index% %col-index%) :: select elements between indexes
-- (cons (eql t) %col-index%) :: select all elements up to the index
-- (cons %col-index% (eql t)) :: select all elements starting from the index
-- (vector %col-index%) :: select elements with specified indexes
-- %col-index% :: select a single column
-
-**** %row-slice%                                                       :type:
-
-- (eql t) :: select all rows/cols
-- (cons %row-index% %row-index%) :: select elements between indexes
-- (cons (eql t) %row-index%) :: select all elements up to the index
-- (cons %row-index% (eql t)) :: select all elements starting from the index
-- (vector %row-index%) :: select elements with specified indexes
-- %row-index% :: select a single row
-
-**** %row-spec%                                                        :type:
-- (or %row-index% row) :: used in map-data-frame-cols
-**** <invalid-slice> (error)                                      :condition:
-**** <invalid-index> (<invalid-slice>)                            :condition:
-**** <row-invalid-index> (<invalid-index>)                        :condition:
-**** <col-invalid-index> (<invalid-index>)                        :condition:
-**** <row-does-not-exist> (<row-invalid-index>)                   :condition:
-**** <col-does-not-exist> (<col-invalid-index>)                   :condition:
-**** <insert-error> (error)                                       :condition:
-**** <col-name-not-unique> (<insert-error>)                       :condition:
-**** <row-length-mismatch> (<insert-error>)                       :condition:
-*** Accessors                                                            :gf:
-**** dims <data-frame>
-Returns a data frame dimensions as two values: a number of rows and a
-number of columns.
-
-**** cols <data-frame>
-Returns a data frame column names. Result is a vector which may reveal
-the internal state of the data frame and should not be modified.
-
-**** rows <data-frame>
-Returns a data frame rows. Result type is a vector which may reveal
-the internal state of a data frame and should not be modified.
-
-**** ref <data-frame> %row-spec% %col-index%
-Selects a single element indexed by row and col. Row may be actual
-object (taken i.e from ~map-data-frame-rows~) - in that case we seek
-the column in it. When row spec is a sequence which is not one of the
-data frame rows consequences are undefined.
-
-#+BEGIN_SRC common-lisp
-(ref data-frame 15 "Max Speed")
-(ref data-frame 42 "Max Speed")
-(ref data-frame (elt (rows data-frame) 0) 42)
-#+END_SRC
-
-Function signals an error <invalid-index> for invalid indexes.
-
-**** sel <data-frame> %row-slice% %col-slice%
-Returns a slice of a <data-frame>. Returned data frame behaves like a
-freshly consed object. Function may delay allocation until it is
-necessary, i.e when adding new rows and colums to the result data
-frame. When both slices are T it is equivalent to copy-data-frame. If
-any splice specifier is invalid signals an error <invlid-slice>.
-
-#+BEGIN_SRC common-lisp
-(let ((data-frame-1 (sel df (cons 10 20)      #("Price" "Max speed")))
-      (data-frame-2 (sel df (cons 10 t)       t))
-      (data-frame-3 (sel df #(1 2 3)          #(1 4 8))))
-  #|do something|#)
-#+END_SRC
-
-*** Mapping                                                              :gf:
-**** map-data-frame <data-frame> rows cols function
-Maps function over the data frame. ROWS and COLS are slice specifiers
-as described in SEL. Mapped function should accept five arguments: row
-index, data row, column index, column name and value.
-
-#+BEGIN_SRC common-lisp
-(map-data-frame df t t
-                (lambda (rind row cind cname val)
-                  (declare (ignore row cname))
-                  (format t "[~s,~s] ~a~%" rind cind val)))
-#+END_SRC
-
-**** map-data-frame-rows <data-frame> rows function
-Maps function over a data frame rows. ROWS is a slice specifier as
-described in SEL. Mapped function should accept two arguments: row
-index and data row (opaque object).
-
-**** map-data-frame-cols <data-frame> %row-spec% cols function
-Maps function over the row columns. COLS is a slice specifier as
-described in SEL. When row spec is a sequence which is not one of the
-data frame rows consequences are undefined. Mapped function should
-accept three arguments: column index, column name and value.
-
-*** Destructive operators
-**** add-rows! <data-frame> &rest rows
-Adds a new data row. Function modifies the data frame and returns the
-modified data frame. To avoid modification of the original data frame
-invoke the function on its copy.
-
-#+BEGIN_SRC common-lisp
-  (let ((new-df (add-rows! (copy-data-frame df)
-                           '("Honda" 42 15 22 :xxx "low")
-                           '("Audi"  10 12 44 :yyy "high"))))
-    (do-something new-df))
-#+END_SRC
-
-**** add-cols! <data-frame> &rest name-fun-pairs
-Data frames are based on rows. Adding a column is an operation
-achieved by specifying a function which accepts a row name, index and
-data sequence. FUN should return the column value for a row. Function
-modifies the data frame and returns the modified object.
-
-#+BEGIN_SRC common-lisp
-  (setq df (add-cols! df
-                      "AVG" (lambda (row-index row)
-                              (/ (+ (ref df row "Max")
-                                    (ref df row "Min"))
-                                 2))
-                      "TYP" (lambda (row-index row)
-                              (if (> (ref df row "Seats") 3)
-                                  :comfort
-                                  :ergonomy))))
-#+END_SRC
-
-*** Constructors
-**** make-data-frame cols &rest rows                               :function:
-Creates a data frame. Cols is a sequence of column names and each row
-is a sequence of column values. Length of values must be the same as
-length of column names sequence, otherwise <row-length-mismatch> error
-is signalled.
-
-#+BEGIN_SRC common-lisp
-(make-data-frame '("name" "col1" "col2" "col3")
-                 '("row1" value1 value2 value3)
-                 '("row2" value1 value2 value3))
-#+END_SRC
-
-Function is a thin wrapper to create a <raw-data-frame>.
-
-**** copy-data-frame <data-frame>                                        :gf:
-Creates a new data frame with copied data (allocates new rows to store
-names and data).
-
-#+BEGIN_SRC common-lisp
-(let ((new-df (copy-data-frame df)))
-  (setq new-df (add-rows! new-df "Foo" '(1 2)))
-  ;; add-rows called on new-df doesn't modify df.
-  (ref df "Bar" 0))
-#+END_SRC
-
-**** join-data-frame <data-frame> <data-frame> &rest args                :gf:
-This function is included for completeness but is left unspecified.
+* Extending Polyclot

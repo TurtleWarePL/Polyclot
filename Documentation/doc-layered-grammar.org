@@ -1,0 +1,209 @@
+
+* Introduction
+
+Layered grammar of graphics is a term coined by Hadley Wickham[fn:1]
+to describe the abstraction used in ggplot2[fn:2]. To understand the
+concept better it is worth reading the paper. In essence each plot is
+composed of:
+
+- a default data frame and a mapping from variables to aesthetics
+- one or more layers each representing a single data serie drawing
+  (each layer may have its own dataset and the mapping to aesthetics)
+  # but the aesthetic mapping must be congruent, right -- sgk
+  # please elaborate -- jd
+- scales (one for each aesthetics mapping)
+- a coordinate system
+- the facet specification
+
+Each layer is defined by a dataset and aesthetic mapping, statistical
+transformation, a geometric object (a point, a line etc.), and the
+positional adjustment (collision modifiers).
+
+While our abstraction is highly inspired by the layered grammar of
+graphics, our API is different to make it better suited for writing
+Common Lisp and CLIM programs. Finding a good abstraction is a
+continuous process so this API is not set in stone yet.
+
+* Components of the layered grammar
+
+** Aesthetic mappings
+Our datasets are represented as data frames (whose protocol and
+implementation are defined in this repository). An aesthetic mapping
+is created with a function ~aest~, i.e:
+
+#+BEGIN_SRC common-lisp
+(aest :x "carat"
+      :y "price")
+#+END_SRC
+
+Mappings are immutable objects and may be reused for different data
+frames (given the column names match). Its arguments are a property
+list where the key is the aesthetic and value is a column name.
+
+In the example above, we associate the column "carat" with the
+aesthetic "x" and the column "price" with the aesthetic "y". If we
+were drawing a scatterplot, it would present a price vs carat chart.
+
+** Statistical transformation
+A statistical transformation (stat) transforms one dataset into
+another. Stat must be location-scale invariant, that is
+
+#+BEGIN_EXAMPLE
+(= (f (+ x a)) (+ (f x) a))
+(= (f (* x b)) (* (f x) b))
+#+END_EXAMPLE
+
+to assure that translation and scaling on the graphic works
+correctly. Statistical transformation may add new columns which may be
+a subject of aesthetic mappings. To create a stat use the function
+~stat~:
+
+#+BEGIN_SRC common-lisp
+(stat <bin> :width 20)
+#+END_SRC
+
+The transformation never modifies the input data frame. A returned
+data frame may have different columns and rows.
+
+** Geometric objects
+Geometric objects (geom) represent the type of plot we are
+creating. The geom may be a scatter plot, a line, a histogram etc. It
+is possible to define custom geoms.
+
+# define a describe-object method?
+Each geom has associated parameters dependent on its properties. For
+instance, the ~<time-serie>~ has only ~:y~ parameter while the
+~<scatter-plot>~ has both ~:x~ and ~:y~. To create a geom, use the
+function ~geom~. For instance:
+
+#+BEGIN_SRC common-lisp
+  (geom <scatter-plot>)                     ; point
+  (geom <time-serie> :interpolation :none)  ; point
+  (geom <time-serie> :interpolation :curve) ; path
+  (geom <histogram>)                        ; area
+#+END_SRC
+
+The ~geom~ function may return an already existing object.
+
+** Collision modifiers
+A collision modifier is responsible for tweaking the position of the
+geometric elements in order to prevent them from obscuring each
+other. For instance, when we draw a scatter plot with discrete
+coordinates, we may add a small jitter to the coordinates to reduce
+the overplotting. Other examples are bar charts, stacked bar charts,
+area charts, etc. Like geometric objects each collision modifier is
+created with its own constructor:
+
+#+BEGIN_SRC common-lisp
+(mods <identity>)
+(mods <jitter> :width 0.1 :height 0.4)
+(mods <nudge> :x 0 :y 0)
+(mods <stack>)
+#+END_SRC
+
+The mods function may return an already existing object. All geometric
+objects have a default collision modifier.
+
+** Layers
+Each layer represents a group of objects we see on the plat. Not all
+parameters must be provided to the function call thanks to a hierarchy
+of defaults.
+
+#+BEGIN_SRC common-lisp
+(<layer> :data data-frame
+         :aest aesthetics
+         :stat statistical-transformation
+         :geom geometric-object
+         :mods collision-modifier)
+#+END_SRC
+
+** Scales
+Scales are responsible for drawing the guides, axes and a legend. They
+also map each aesthetic to its graphical properties (shape, color,
+thickness and such). Like geoms different scales have predefined names
+(i.e ~:x~ is a horizontal parameter).
+
+#+BEGIN_SRC common-lisp
+(scale :x     :continuous)
+(scale :x     :discrete)
+(scale :color :brewer)
+(scale :shape)
+#+END_SRC
+
+# FIXME when we gain better understanding of how to use scales
+# skillfully extend this section.
+
+# While ggplot does allow a "secondary scale" in new version in
+# principle it is not possible to associate spearate scales for
+# different layers. Should we allow multiple scales?
+
+** Coordinate system
+A coordinate system (coord) maps object position into the plane of a
+plot. Examples of a coordinate system are:
+
+- cartesian coordinates
+- polar coordinates
+
+The ~coord~ function controls appearance of axes and grid lines as
+well as geometric shapes like a line.
+
+#+BEGIN_SRC common-lisp
+(coord :cartesian :xmin 0 :ymin 0 :xmax 3 :ymax 5000)
+(coord <custom> :x :log :y :log)
+(cooard <polar> :cx 10 :cy 10)
+#+END_SRC
+
+** Faceting
+
+Faceting known as trellis plots allows putting many different charts
+in a single image. This is useful for analyzing data depending on some
+variable. For example imagine we have the following data set:
+
+| salary | books / year | sex |
+|--------+--------------+-----|
+|   1000 |           20 | F   |
+|    980 |           15 | M   |
+|   2500 |           30 | M   |
+|   1500 |            5 | A   |
+|    ... |          ... | ... |
+
+#+BEGIN_SRC common-lisp
+;; (aest :x "books / year" :y "salary" :sex "sex")
+(facet :sex)
+#+END_SRC
+
+When we specify that the faceting variable is ~sex~ then we will have
+multiple charts - one for each sex in the dataset.
+
+* Making charts
+
+A chart is a mutable object. Each chart has layered grammar
+components, scales, coordinate system, faceting variables and a set of
+layers. If a component is not specified it has a default value. Layers
+inherit layered grammar components from the chart unless they
+explicitly overwrite them. Defining the chart is not the same thing as
+plotting it.
+
+#+BEGIN_SRC common-lisp
+  (define-chart *chart*
+      ((:data diamonds)
+       (:aest :y      "price"
+              :x      "carat"
+              :shape  "quality"
+              :decade "decade")
+       (:stat <identity>)
+       (:mods <identity>)
+       (:geom <time-serie> :interpolation :none)
+       (:scale (:x :continuous)
+               (:y :continuous)
+               (:shape))
+       (:coord <cartesian>)
+       (:facet :decade))
+    (<layer> :geom (geom <scatter-plot> :interpolation :curve))
+    (<layer> :aest (aest :y "satisfaction")))
+#+END_SRC
+
+* Footnotes
+
+[fn:1] http://vita.had.co.nz/papers/layered-grammar.html
+[fn:2] https://ggplot2.tidyverse.org/
