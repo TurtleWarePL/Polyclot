@@ -3,7 +3,8 @@
 (define-class <count> (<stat>) ())
 
 (define-class <bin> (<stat>)
-  ;; :width and :count are mutually exclusive.
+  ;; one of :width, :count, or :bin-edges required; they are mutually
+  ;; exclusive.
   ((width :initarg :width :initform nil)
    (count :initarg :count :initform 29)
    (left-edge :initarg :left-edge :initform t)
@@ -33,19 +34,14 @@
 (defun uniform-bins (count min max)
   "Return uniform bin centers given `count` and range `min` and `max`."
   (let* ((bin-centers (make-array count))
-         ;; (bin-edges (make-array (1+ count)))
          (width (- max min))
          (dw (/ width count))
          (dw/2 (/ dw 2)))
-    ;; (setf (aref bin-edges 0) min)
     (loop for index from 1 to count and i from 0
           for factor = (/ index count)
           for edge = (+ (* (- 1 factor) min) (* factor max))
           for center = (- edge dw/2)
-          ;; do (setf (aref bin-edges index) edge
-          ;;          (aref bin-centers i) center))
           do (setf (aref bin-centers i) center))
-    ;; (values bin-edges bin-centers)))
     bin-centers))
 
 (defun nonuniform-bins (bin-edges)
@@ -106,7 +102,7 @@ bin-widths are returned as the second value.
                        (cond 
                          ((< xval xmin) (incf (aref bin-counts 0)))
                          ((>= xval xmax) (incf (aref bin-counts (1- n-bins))))
-                         (t (loop with index = 0 ;; avoid (non)conforming issue with i in finally clause
+                         (t (loop with index = 0 ; avoid (non)conforming issue with i in finally clause
                                   for i from 1 to count
                                   until (< xval (elt bin-edges i))
                                   do (incf index)
